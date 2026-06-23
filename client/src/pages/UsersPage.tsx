@@ -11,7 +11,6 @@ import {
 import api from "../lib/api";
 import type { User } from "../types";
 import { formatDate } from "../lib/utils";
-import { AppLayout } from "../components/Layout";
 
 interface UserFormData {
   name: string;
@@ -96,8 +95,8 @@ export function UsersPage() {
   };
 
   return (
-    <AppLayout>
-      <div className="animate-fadeIn" style={{ maxWidth: 900 }}>
+    <>
+    <div className="animate-fadeIn" style={{ maxWidth: 900 }}>
         {/* Header */}
         <div
           style={{
@@ -349,6 +348,6 @@ export function UsersPage() {
           </div>
         </div>
       )}
-    </AppLayout>
+    </>
   );
 }

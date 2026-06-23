@@ -13,8 +13,6 @@ import {
 import api from "../lib/api";
 import type { DashboardStats, Ticket as TicketType } from "../types";
 import { getStatusBadgeClass, formatRelativeDate } from "../lib/utils";
-import { AppLayout } from "../components/Layout";
-
 function StatCard({
   label,
   value,
@@ -92,17 +90,14 @@ export function DashboardPage() {
 
   if (isLoading) {
     return (
-      <AppLayout>
-        <div style={{ display: "flex", justifyContent: "center", padding: "4rem" }}>
+      <div style={{ display: "flex", justifyContent: "center", padding: "4rem" }}>
           <div className="spinner" style={{ width: 32, height: 32 }} />
         </div>
-      </AppLayout>
     );
   }
 
   return (
-    <AppLayout>
-      <div className="animate-fadeIn" style={{ maxWidth: 1100 }}>
+    <div className="animate-fadeIn" style={{ maxWidth: 1100 }}>
         {/* Header */}
         <div style={{ marginBottom: "2rem" }}>
           <h1 style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--color-text)" }}>
@@ -296,6 +291,5 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }

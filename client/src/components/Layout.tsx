@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Ticket,
@@ -16,7 +16,7 @@ const navItems = [
 
 const adminNavItems = [{ to: "/users", icon: Users, label: "Users" }];
 
-export function Sidebar() {
+function TopBar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -26,55 +26,89 @@ export function Sidebar() {
   };
 
   return (
+    <header style={{
+      height: 60,
+      background: "var(--color-surface)",
+      borderBottom: "1px solid var(--color-border)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "0 1.5rem",
+      flexShrink: 0,
+    }}>
+      {/* Left: breadcrumb-style label */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <Zap size={18} color="var(--color-primary)" fill="var(--color-primary)" />
+        <span style={{ fontWeight: 600, fontSize: "0.9375rem", color: "var(--color-text)" }}>
+          TicketHub
+        </span>
+      </div>
+
+      {/* Right: user info + signout */}
+      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.625rem",
+          padding: "0.375rem 0.75rem",
+          borderRadius: "var(--radius-sm)",
+          background: "rgba(255,255,255,0.03)",
+        }}>
+          <div style={{
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, var(--color-primary), #818cf8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "0.75rem",
+            fontWeight: 700,
+            color: "#fff",
+            flexShrink: 0,
+          }}>
+            {user?.name?.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-text)", lineHeight: 1.3 }}>
+              {user?.name}
+            </div>
+            <div style={{ fontSize: "0.6875rem", color: "var(--color-text-subtle)", lineHeight: 1.3 }}>
+              {user?.role}
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="btn btn-ghost btn-sm"
+          title="Sign out"
+        >
+          <LogOut size={14} />
+          Sign out
+        </button>
+      </div>
+    </header>
+  );
+}
+
+export function Sidebar() {
+  const { user } = useAuth();
+
+  return (
     <aside
       style={{
-        width: 240,
+        width: 220,
         minHeight: "100vh",
         background: "var(--color-surface)",
         borderRight: "1px solid var(--color-border)",
         display: "flex",
         flexDirection: "column",
-        padding: "1.5rem 1rem",
+        padding: "1.25rem 0.75rem",
         position: "sticky",
         top: 0,
         flexShrink: 0,
       }}
     >
-      {/* Logo */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0.625rem",
-          padding: "0.25rem 0.5rem",
-          marginBottom: "2rem",
-        }}
-      >
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: "var(--color-primary)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 0 16px var(--color-primary-glow)",
-          }}
-        >
-          <Zap size={16} color="white" fill="white" />
-        </div>
-        <span
-          style={{
-            fontWeight: 700,
-            fontSize: "0.9375rem",
-            color: "var(--color-text)",
-          }}
-        >
-          TicketHub
-        </span>
-      </div>
-
       {/* Navigation */}
       <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
         {navItems.map(({ to, icon: Icon, label }) => (
@@ -154,61 +188,27 @@ export function Sidebar() {
           </>
         )}
       </nav>
-
-      {/* User footer */}
-      <div
-        style={{
-          borderTop: "1px solid var(--color-border)",
-          paddingTop: "1rem",
-          marginTop: "1rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.75rem",
-        }}
-      >
-        <div style={{ padding: "0 0.5rem" }}>
-          <div
-            style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--color-text)" }}
-          >
-            {user?.name}
-          </div>
-          <div
-            style={{
-              fontSize: "0.75rem",
-              color: "var(--color-text-muted)",
-              marginTop: 2,
-            }}
-          >
-            {user?.role}
-          </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="btn btn-ghost btn-sm"
-          style={{ justifyContent: "flex-start" }}
-        >
-          <LogOut size={14} />
-          Sign out
-        </button>
-      </div>
     </aside>
   );
 }
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout() {
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <Sidebar />
-      <main
-        style={{
-          flex: 1,
-          padding: "2rem",
-          overflowY: "auto",
-          minWidth: 0,
-        }}
-      >
-        {children}
-      </main>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <TopBar />
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+        <Sidebar />
+        <main
+          style={{
+            flex: 1,
+            padding: "1.5rem",
+            overflowY: "auto",
+            minWidth: 0,
+          }}
+        >
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

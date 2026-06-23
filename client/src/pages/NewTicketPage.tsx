@@ -2,7 +2,6 @@ import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Send } from "lucide-react";
 import api from "../lib/api";
-import { AppLayout } from "../components/Layout";
 import { useAuth } from "../contexts/AuthContext";
 
 export function NewTicketPage() {
@@ -43,8 +42,7 @@ export function NewTicketPage() {
   };
 
   return (
-    <AppLayout>
-      <div className="animate-fadeIn" style={{ maxWidth: 680 }}>
+    <div className="animate-fadeIn" style={{ maxWidth: 680 }}>
         <button
           className="btn btn-ghost btn-sm"
           onClick={() => navigate(-1)}
@@ -163,6 +161,5 @@ export function NewTicketPage() {
           </div>
         </form>
       </div>
-    </AppLayout>
   );
 }

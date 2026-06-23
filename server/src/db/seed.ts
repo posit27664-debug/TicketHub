@@ -1,46 +1,55 @@
-import { auth } from "../lib/auth";
 import { prisma } from "./client";
 import { Role } from "@prisma/client";
+import { hashPassword } from "@better-auth/utils/password";
 
 async function seed() {
   console.log("🌱 Starting database seed...");
 
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@example.com";
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || "password123";
+
   // ─── Clean up existing users to avoid conflicts ────────────────────────────
   await prisma.user.deleteMany({
-    where: { email: { in: ["admin@tickethub.com", "agent@tickethub.com"] } },
+    where: {
+      email: { in: [adminEmail, "agent@tickethub.com"] },
+    },
   });
 
   // ─── Admin User ────────────────────────────────────────────────────────────
-  const adminRes = await auth.api.signUpEmail({
-    body: {
-      email: "admin@tickethub.com",
-      password: "admin123",
+  const hashedAdmin = await hashPassword(adminPassword);
+  const admin = await prisma.user.create({
+    data: {
+      email: adminEmail,
       name: "Admin User",
+      role: Role.ADMIN,
+      accounts: {
+        create: {
+          id: crypto.randomUUID(),
+          accountId: crypto.randomUUID(),
+          providerId: "credential",
+          password: hashedAdmin,
+        },
+      },
     },
-  });
-  
-  if (!adminRes.user) throw new Error("Failed to create admin");
-  
-  const admin = await prisma.user.update({
-    where: { id: adminRes.user.id },
-    data: { role: Role.ADMIN },
   });
   console.log(`✅ Admin user: ${admin.email}`);
 
   // ─── Agent User ────────────────────────────────────────────────────────────
-  const agentRes = await auth.api.signUpEmail({
-    body: {
+  const hashedAgent = await hashPassword("agent123");
+  const agent = await prisma.user.create({
+    data: {
       email: "agent@tickethub.com",
-      password: "agent123",
       name: "Support Agent",
+      role: Role.AGENT,
+      accounts: {
+        create: {
+          id: crypto.randomUUID(),
+          accountId: crypto.randomUUID(),
+          providerId: "credential",
+          password: hashedAgent,
+        },
+      },
     },
-  });
-  
-  if (!agentRes.user) throw new Error("Failed to create agent");
-  
-  const agent = await prisma.user.update({
-    where: { id: agentRes.user.id },
-    data: { role: Role.AGENT },
   });
   console.log(`✅ Agent user: ${agent.email}`);
 
@@ -68,7 +77,7 @@ async function seed() {
 
   for (const entry of knowledgeEntries) {
     await prisma.knowledgeBase.upsert({
-      where: { id: entry.title }, // Using title as temp id for upsert
+      where: { id: entry.title },
       update: { content: entry.content },
       create: {
         title: entry.title,
@@ -112,7 +121,7 @@ async function seed() {
   console.log(`✅ Sample tickets seeded (${sampleTickets.length})`);
 
   console.log("\n🎉 Seed complete!");
-  console.log("   Admin: admin@tickethub.com / admin123");
+  console.log(`   Admin: ${adminEmail} / ${adminPassword}`);
   console.log("   Agent: agent@tickethub.com / agent123");
 }
 

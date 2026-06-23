@@ -15,7 +15,6 @@ import {
   formatCategoryLabel,
   formatRelativeDate,
 } from "../lib/utils";
-import { AppLayout } from "../components/Layout";
 
 export function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -81,8 +80,7 @@ export function TicketsPage() {
   ];
 
   return (
-    <AppLayout>
-      <div className="animate-fadeIn" style={{ maxWidth: 1100 }}>
+    <div className="animate-fadeIn" style={{ maxWidth: 1100 }}>
         {/* Header */}
         <div
           style={{
@@ -297,6 +295,5 @@ export function TicketsPage() {
           </div>
         )}
       </div>
-    </AppLayout>
   );
 }

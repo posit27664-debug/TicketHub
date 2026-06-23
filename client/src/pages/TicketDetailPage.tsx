@@ -19,7 +19,6 @@ import {
   formatCategoryLabel,
   formatDate,
 } from "../lib/utils";
-import { AppLayout } from "../components/Layout";
 import { useAuth } from "../contexts/AuthContext";
 
 function AiPanel({ ticket, onUpdate }: { ticket: Ticket; onUpdate: (t: Ticket) => void }) {
@@ -211,30 +210,25 @@ export function TicketDetailPage() {
 
   if (isLoading) {
     return (
-      <AppLayout>
-        <div style={{ display: "flex", justifyContent: "center", padding: "4rem" }}>
+      <div style={{ display: "flex", justifyContent: "center", padding: "4rem" }}>
           <div className="spinner" style={{ width: 32, height: 32 }} />
         </div>
-      </AppLayout>
     );
   }
 
   if (!ticket) {
     return (
-      <AppLayout>
-        <div className="empty-state">
+      <div className="empty-state">
           <p>Ticket not found</p>
           <Link to="/tickets" className="btn btn-primary" style={{ marginTop: "1rem" }}>
             Back to Tickets
           </Link>
         </div>
-      </AppLayout>
     );
   }
 
   return (
-    <AppLayout>
-      <div className="animate-fadeIn" style={{ maxWidth: 1100 }}>
+    <div className="animate-fadeIn" style={{ maxWidth: 1100 }}>
         {/* Back button */}
         <button
           className="btn btn-ghost btn-sm"
@@ -532,6 +526,5 @@ export function TicketDetailPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }

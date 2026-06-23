@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoute";
+import { AppLayout } from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { TicketsPage } from "./pages/TicketsPage";
@@ -89,14 +90,16 @@ function App() {
 
           {/* Protected */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/tickets" element={<TicketsPage />} />
-            <Route path="/tickets/new" element={<NewTicketPage />} />
-            <Route path="/tickets/:id" element={<TicketDetailPage />} />
+            <Route element={<AppLayout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/tickets" element={<TicketsPage />} />
+              <Route path="/tickets/new" element={<NewTicketPage />} />
+              <Route path="/tickets/:id" element={<TicketDetailPage />} />
 
-            {/* Admin only */}
-            <Route element={<AdminRoute />}>
-              <Route path="/users" element={<UsersPage />} />
+              {/* Admin only */}
+              <Route element={<AdminRoute />}>
+                <Route path="/users" element={<UsersPage />} />
+              </Route>
             </Route>
           </Route>
 
