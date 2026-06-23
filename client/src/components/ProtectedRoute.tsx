@@ -15,7 +15,7 @@ export function ProtectedRoute() {
           background: "var(--color-bg)",
         }}
       >
-        <div className="spinner" style={{ width: 32, height: 32 }} />
+        <div className="spinner" />
       </div>
     );
   }

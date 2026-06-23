@@ -16,6 +16,32 @@ import {
   formatRelativeDate,
 } from "../lib/utils";
 
+const btn: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "0.5rem",
+  borderRadius: "6px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  cursor: "pointer",
+  border: "none",
+  transition: "all 0.15s ease",
+  whiteSpace: "nowrap",
+  textDecoration: "none",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  background: "var(--color-surface-2)",
+  border: "1px solid var(--color-border)",
+  borderRadius: "6px",
+  color: "var(--color-text)",
+  fontSize: "0.875rem",
+  padding: "0.625rem 0.875rem",
+  outline: "none",
+  transition: "all 0.15s ease",
+};
+
 export function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -79,221 +105,281 @@ export function TicketsPage() {
     { value: "REFUND_REQUEST", label: "Refund" },
   ];
 
+  const primaryBtn = (small?: boolean): React.CSSProperties => ({
+    ...btn,
+    padding: small ? "0.375rem 0.75rem" : "0.5rem 1rem",
+    fontSize: small ? "13px" : "0.875rem",
+    background: "var(--color-primary)",
+    color: "white",
+  });
+
+  const secondaryBtn = (small?: boolean): React.CSSProperties => ({
+    ...btn,
+    padding: small ? "0.375rem 0.75rem" : "0.5rem 1rem",
+    fontSize: small ? "13px" : "0.875rem",
+    background: "var(--color-surface-2)",
+    color: "var(--color-text)",
+    border: "1px solid var(--color-border)",
+  });
+
+  const ghostBtn = (small?: boolean): React.CSSProperties => ({
+    ...btn,
+    padding: small ? "0.375rem 0.75rem" : "0.5rem 1rem",
+    fontSize: small ? "13px" : "0.875rem",
+    background: "transparent",
+    color: "var(--color-text-muted)",
+  });
+
   return (
-    <div className="animate-fadeIn" style={{ maxWidth: 1100 }}>
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "1.5rem",
+    <div className="animate-fade-in">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+        <div>
+          <h1 style={{ fontSize: "26px", fontWeight: 700, color: "var(--color-text)" }}>Tickets</h1>
+          <p style={{ color: "var(--color-text-muted)", marginTop: "0.25rem" }}>
+            {pagination?.total ?? "\u2026"} total tickets
+          </p>
+        </div>
+        <Link
+          to="/tickets/new"
+          id="new-ticket-btn"
+          style={primaryBtn()}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.boxShadow = "var(--color-shadow-glow)";
+            e.currentTarget.style.transform = "translateY(-2px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.boxShadow = "none";
+            e.currentTarget.style.transform = "none";
           }}
         >
-          <div>
-            <h1 style={{ fontSize: "1.625rem", fontWeight: 700 }}>Tickets</h1>
-            <p style={{ color: "var(--color-text-muted)", marginTop: 4 }}>
-              {pagination?.total ?? "…"} total tickets
-            </p>
-          </div>
-          <Link to="/tickets/new" id="new-ticket-btn" className="btn btn-primary">
-            <Plus size={16} />
-            New Ticket
-          </Link>
-        </div>
+          <Plus size={16} />
+          New Ticket
+        </Link>
+      </div>
 
-        {/* Filters */}
+      <div
+        className="card"
+        style={{
+          padding: "1rem 1.25rem",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "0.75rem",
+          alignItems: "center",
+          marginBottom: "1.25rem",
+        }}
+      >
         <div
-          className="card"
           style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.75rem",
-            alignItems: "center",
-            marginBottom: "1.25rem",
-            padding: "1rem 1.25rem",
+            position: "relative",
+            flex: 1,
+            minWidth: "160px",
+            flexBasis: "200px",
           }}
         >
-          {/* Search */}
-          <div style={{ position: "relative", flex: "1 1 200px", minWidth: 160 }}>
-            <Search
-              size={14}
-              style={{
-                position: "absolute",
-                left: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "var(--color-text-subtle)",
-              }}
-            />
-            <input
-              id="ticket-search"
-              className="input"
-              style={{ paddingLeft: "2rem" }}
-              placeholder="Search tickets…"
-              value={search}
-              onChange={(e) => setFilter("search", e.target.value || null)}
-            />
-          </div>
-
-          {/* Status filter */}
-          <div style={{ display: "flex", gap: "0.375rem" }}>
-            <button
-              className={`btn btn-sm ${!status ? "btn-primary" : "btn-secondary"}`}
-              onClick={() => setFilter("status", null)}
-            >
-              All
-            </button>
-            {statusOptions.map((s) => (
-              <button
-                key={s}
-                className={`btn btn-sm ${status === s ? "btn-primary" : "btn-secondary"}`}
-                onClick={() => setFilter("status", s === status ? null : s)}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-
-          {/* Category filter */}
-          <select
-            id="category-filter"
-            className="input"
-            style={{ width: "auto" }}
-            value={category ?? ""}
-            onChange={(e) => setFilter("category", e.target.value || null)}
-          >
-            <option value="">All categories</option>
-            {categoryOptions.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-
-          {/* Clear filters */}
-          {(status || category || search) && (
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => setSearchParams({})}
-            >
-              <X size={14} /> Clear
-            </button>
-          )}
-        </div>
-
-        {/* Table */}
-        <div className="table-wrapper">
-          {isLoading ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: "3rem" }}>
-              <div className="spinner" />
-            </div>
-          ) : tickets.length === 0 ? (
-            <div className="empty-state">
-              <Search size={40} />
-              <p style={{ marginTop: "0.5rem" }}>No tickets found</p>
-              <p style={{ fontSize: "0.8125rem", marginTop: "0.25rem" }}>
-                Try changing your filters
-              </p>
-            </div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Subject</th>
-                  <th>Status</th>
-                  <th>Category</th>
-                  <th>Assigned To</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tickets.map((ticket) => (
-                  <tr key={ticket.id}>
-                    <td>
-                      <Link
-                        to={`/tickets/${ticket.id}`}
-                        style={{
-                          color: "var(--color-text)",
-                          textDecoration: "none",
-                          fontWeight: 500,
-                        }}
-                      >
-                        {ticket.subject}
-                      </Link>
-                      {ticket.fromEmail && (
-                        <div
-                          style={{
-                            fontSize: "0.75rem",
-                            color: "var(--color-text-muted)",
-                            marginTop: 2,
-                          }}
-                        >
-                          {ticket.fromName} &lt;{ticket.fromEmail}&gt;
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <span className={getStatusBadgeClass(ticket.status)}>
-                        {ticket.status}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={getCategoryBadgeClass(ticket.category)}>
-                        {formatCategoryLabel(ticket.category)}
-                      </span>
-                    </td>
-                    <td style={{ color: "var(--color-text-muted)" }}>
-                      {ticket.assignedAgent?.name ?? (
-                        <span style={{ color: "var(--color-text-subtle)" }}>—</span>
-                      )}
-                    </td>
-                    <td
-                      style={{
-                        color: "var(--color-text-muted)",
-                        whiteSpace: "nowrap",
-                        fontSize: "0.8125rem",
-                      }}
-                    >
-                      {formatRelativeDate(ticket.createdAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
-          <div
+          <Search
+            size={14}
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
-              marginTop: "1.25rem",
+              position: "absolute",
+              left: "0.625rem",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--color-text-subtle)",
+            }}
+          />
+          <input
+            id="ticket-search"
+            style={{
+              ...inputStyle,
+              paddingLeft: "2rem",
+            }}
+            placeholder="Search tickets\u2026"
+            value={search}
+            onChange={(e) => setFilter("search", e.target.value || null)}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-primary)";
+              e.currentTarget.style.boxShadow = "0 0 0 3px var(--color-primary-glow)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-border)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          />
+        </div>
+
+        <div style={{ display: "flex", gap: "0.375rem" }}>
+          {[
+            { key: null as string | null, label: "All" },
+            ...statusOptions.map((s) => ({ key: s, label: s })),
+          ].map(({ key, label }) => {
+            const active = key === status || (key === null && !status);
+            return (
+              <button
+                key={label}
+                style={active ? { ...primaryBtn(true), outline: "none" } : { ...secondaryBtn(true), outline: "none" }}
+                onClick={() => setFilter("status", key)}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        <select
+          id="category-filter"
+          style={{
+            ...inputStyle,
+            width: "auto",
+            cursor: "pointer",
+            appearance: "none",
+            WebkitAppearance: "none",
+            paddingRight: "1.5rem",
+          }}
+          value={category ?? ""}
+          onChange={(e) => setFilter("category", e.target.value || null)}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = "var(--color-primary)";
+            e.currentTarget.style.boxShadow = "0 0 0 3px var(--color-primary-glow)";
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = "var(--color-border)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        >
+          <option value="">All categories</option>
+          {categoryOptions.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+
+        {(status || category || search) && (
+          <button
+            style={{ ...ghostBtn(true), outline: "none" }}
+            onClick={() => setSearchParams({})}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(0,0,0,0.04)";
+              e.currentTarget.style.color = "var(--color-text)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--color-text-muted)";
             }}
           >
-            <button
-              className="btn btn-secondary btn-sm"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
-              Page {page} of {pagination.totalPages}
-            </span>
-            <button
-              className="btn btn-secondary btn-sm"
-              disabled={page >= pagination.totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
+            <X size={14} /> Clear
+          </button>
         )}
       </div>
+
+      <div
+        className="card"
+        style={{ padding: 0, overflowX: "auto" }}
+      >
+        {isLoading ? (
+          <div style={{ display: "flex", justifyContent: "center", padding: "3rem" }}>
+            <div className="spinner !w-5 !h-5" />
+          </div>
+        ) : tickets.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "4rem 2rem", color: "var(--color-text-muted)" }}>
+            <Search size={40} style={{ margin: "0 auto 1rem", opacity: 0.3 }} />
+            <p style={{ marginTop: "0.5rem" }}>No tickets found</p>
+            <p style={{ fontSize: "13px", marginTop: "0.25rem" }}>Try changing your filters</p>
+          </div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Subject</th>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>Category</th>
+                <th style={thStyle}>Assigned To</th>
+                <th style={thStyle}>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tickets.map((ticket) => (
+                <tr
+                  key={ticket.id}
+                  style={{ transition: "background-color 0.1s ease" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  <td style={tdStyle}>
+                    <Link
+                      to={`/tickets/${ticket.id}`}
+                      style={{ color: "var(--color-text)", textDecoration: "none", fontWeight: 500 }}
+                    >
+                      {ticket.subject}
+                    </Link>
+                    {ticket.fromEmail && (
+                      <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", marginTop: "0.125rem" }}>
+                        {ticket.fromName} &lt;{ticket.fromEmail}&gt;
+                      </div>
+                    )}
+                  </td>
+                  <td style={tdStyle}>
+                    <span className={getStatusBadgeClass(ticket.status)}>
+                      {ticket.status}
+                    </span>
+                  </td>
+                  <td style={tdStyle}>
+                    <span className={getCategoryBadgeClass(ticket.category)}>
+                      {formatCategoryLabel(ticket.category)}
+                    </span>
+                  </td>
+                  <td style={{ ...tdStyle, color: "var(--color-text-muted)" }}>
+                    {ticket.assignedAgent?.name ?? (
+                      <span style={{ color: "var(--color-text-subtle)" }}>{'\u2014'}</span>
+                    )}
+                  </td>
+                  <td style={{ ...tdStyle, color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
+                    {formatRelativeDate(ticket.createdAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {pagination && pagination.totalPages > 1 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", marginTop: "1.25rem" }}>
+          <button
+            style={{ ...secondaryBtn(true), outline: "none" }}
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
+            Page {page} of {pagination.totalPages}
+          </span>
+          <button
+            style={{ ...secondaryBtn(true), outline: "none" }}
+            disabled={page >= pagination.totalPages}
+            onClick={() => setPage(page + 1)}
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
+
+const thStyle: React.CSSProperties = {
+  textAlign: "left",
+  padding: "0.75rem 1rem",
+  fontSize: "0.75rem",
+  fontWeight: 600,
+  color: "var(--color-text-subtle)",
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+  borderBottom: "1px solid var(--color-border)",
+  whiteSpace: "nowrap",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "0.875rem 1rem",
+  borderBottom: "1px solid var(--color-border)",
+  verticalAlign: "middle",
+  fontSize: "0.875rem",
+};
