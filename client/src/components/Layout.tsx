@@ -52,7 +52,7 @@ function TopBar() {
           gap: "0.625rem",
           padding: "0.375rem 0.75rem",
           borderRadius: "var(--radius-sm)",
-          background: "rgba(255,255,255,0.03)",
+          background: "rgba(0,0,0,0.03)",
         }}>
           <div style={{
             width: 28,

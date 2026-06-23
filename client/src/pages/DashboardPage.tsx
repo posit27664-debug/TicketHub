@@ -40,12 +40,12 @@ function StatCard({
           width: 48,
           height: 48,
           borderRadius: 12,
-          background: `${color}18`,
-          border: `1px solid ${color}30`,
+          background: `${color}12`,
+          border: `1px solid ${color}25`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          boxShadow: `0 0 20px ${glow}`,
+          boxShadow: `0 0 16px ${glow}`,
           flexShrink: 0,
         }}
       >
@@ -83,9 +83,9 @@ export function DashboardPage() {
   }, []);
 
   const categoryInfo = {
-    GENERAL_QUESTION: { label: "General", icon: HelpCircle, color: "#a5b4fc" },
-    TECHNICAL_QUESTION: { label: "Technical", icon: Wrench, color: "#93c5fd" },
-    REFUND_REQUEST: { label: "Refund", icon: CreditCard, color: "#fca5a5" },
+    GENERAL_QUESTION: { label: "General", icon: HelpCircle, color: "#6366f1" },
+    TECHNICAL_QUESTION: { label: "Technical", icon: Wrench, color: "#3b82f6" },
+    REFUND_REQUEST: { label: "Refund", icon: CreditCard, color: "#ef4444" },
   };
 
   if (isLoading) {
@@ -263,7 +263,7 @@ export function DashboardPage() {
                     </div>
                     <div
                       style={{
-                        height: 4,
+                        height: 6,
                         background: "var(--color-surface-2)",
                         borderRadius: 100,
                         overflow: "hidden",
@@ -275,6 +275,7 @@ export function DashboardPage() {
                           width: `${pct}%`,
                           background: info.color,
                           borderRadius: 100,
+                          opacity: 0.8,
                           transition: "width 0.8s ease",
                         }}
                       />

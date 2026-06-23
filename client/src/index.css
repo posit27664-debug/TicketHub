@@ -3,26 +3,32 @@
 
 /* ─── Design Tokens ─────────────────────────────────────────────────────────── */
 :root {
-  --color-bg: #0f1117;
-  --color-surface: #161b27;
-  --color-surface-2: #1d2536;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-strong: rgba(255, 255, 255, 0.15);
-  --color-text: #e8eaf0;
-  --color-text-muted: #8b93a7;
-  --color-text-subtle: #5a6072;
+  --color-bg: #f5f6fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #eeeff3;
+  --color-border: rgba(0, 0, 0, 0.06);
+  --color-border-strong: rgba(0, 0, 0, 0.10);
+  --color-text: #1a1d23;
+  --color-text-muted: #6b7280;
+  --color-text-subtle: #9ca3af;
 
   /* Accent */
   --color-primary: #6366f1;
-  --color-primary-hover: #818cf8;
-  --color-primary-glow: rgba(99, 102, 241, 0.25);
+  --color-primary-hover: #4f46e5;
+  --color-primary-glow: rgba(99, 102, 241, 0.18);
 
   /* Status colors */
-  --color-open: #f59e0b;
-  --color-resolved: #10b981;
+  --color-open: #d97706;
+  --color-resolved: #059669;
   --color-closed: #6b7280;
   --color-danger: #ef4444;
-  --color-success: #10b981;
+  --color-success: #059669;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-glow: 0 0 24px rgba(99, 102, 241, 0.15);
 
   /* Radius */
   --radius-sm: 6px;
@@ -64,11 +70,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 100px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.18);
 }
 
 /* ─── Animations ─────────────────────────────────────────────────────────────── */
@@ -103,18 +109,21 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .card:hover {
   border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
 }
 
 .card-glass {
-  background: rgba(22, 27, 39, 0.6);
-  backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Buttons */
@@ -154,7 +163,7 @@ body {
   border: 1px solid var(--color-border);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.03);
   border-color: var(--color-border-strong);
 }
 
@@ -172,7 +181,7 @@ body {
   color: var(--color-text-muted);
 }
 .btn-ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.04);
   color: var(--color-text);
 }
 
@@ -186,7 +195,7 @@ body {
   font-size: 1rem;
 }
 
-/* Autofill override — prevent white background */
+/* Autofill override */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -249,34 +258,34 @@ select.input {
 }
 
 .badge-open {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(217, 119, 6, 0.08);
   color: var(--color-open);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid rgba(217, 119, 6, 0.2);
 }
 .badge-resolved {
-  background: rgba(16, 185, 129, 0.15);
+  background: rgba(5, 150, 105, 0.08);
   color: var(--color-resolved);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(5, 150, 105, 0.2);
 }
 .badge-closed {
-  background: rgba(107, 114, 128, 0.15);
+  background: rgba(107, 114, 128, 0.08);
   color: var(--color-closed);
-  border: 1px solid rgba(107, 114, 128, 0.3);
+  border: 1px solid rgba(107, 114, 128, 0.2);
 }
 .badge-general {
-  background: rgba(99, 102, 241, 0.15);
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 .badge-technical {
-  background: rgba(59, 130, 246, 0.15);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 .badge-refund {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 /* Table */
@@ -319,7 +328,7 @@ tbody tr {
 }
 
 tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 /* Spinner */

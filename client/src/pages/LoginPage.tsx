@@ -1,26 +1,45 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { LogIn, Loader2, Eye, EyeOff, Zap } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
+const schema = z.object({
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Enter a valid email address"),
+  password: z
+    .string()
+    .min(1, "Password is required")
+    .min(6, "Password must be at least 6 characters"),
+});
+
+type FormData = z.infer<typeof schema>;
+
 export function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [serverError, setServerError] = useState("");
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = (location.state as { from?: string })?.from || "/dashboard";
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
+
+  const onSubmit = async (data: FormData) => {
+    setServerError("");
     try {
-      await login(email, password);
+      await login(data.email, data.password);
       navigate(from, { replace: true });
     } catch (err: unknown) {
       const msg =
@@ -28,9 +47,7 @@ export function LoginPage() {
           ?.response?.data?.error?.message ??
         (err as Error)?.message ??
         "Invalid email or password.";
-      setError(msg);
-    } finally {
-      setIsLoading(false);
+      setServerError(msg);
     }
   };
 
@@ -45,7 +62,6 @@ export function LoginPage() {
       position: "relative",
       overflow: "hidden",
     }}>
-      {/* Background gradient orbs */}
       <div style={{
         position: "absolute",
         top: "-20%",
@@ -73,7 +89,6 @@ export function LoginPage() {
         padding: "2.5rem",
         position: "relative",
       }}>
-        {/* Logo */}
         <div style={{
           display: "flex",
           flexDirection: "column",
@@ -110,8 +125,7 @@ export function LoginPage() {
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <div>
             <label className="label" htmlFor="email">Email</label>
             <div className="input" style={{
@@ -119,6 +133,7 @@ export function LoginPage() {
               alignItems: "center",
               gap: "0.5rem",
               padding: "0 0.875rem",
+              borderColor: errors.email ? "var(--color-danger)" : undefined,
             }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-subtle)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <rect width="20" height="16" x="2" y="4" rx="2" />
@@ -127,10 +142,8 @@ export function LoginPage() {
               <input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register("email")}
                 placeholder="you@company.com"
-                required
                 autoComplete="email"
                 autoFocus
                 style={{
@@ -145,6 +158,11 @@ export function LoginPage() {
                 }}
               />
             </div>
+            {errors.email && (
+              <p style={{ color: "var(--color-danger)", fontSize: "0.75rem", marginTop: "0.375rem" }}>
+                {errors.email.message}
+              </p>
+            )}
           </div>
 
           <div>
@@ -154,6 +172,7 @@ export function LoginPage() {
               alignItems: "center",
               gap: "0.5rem",
               padding: "0 0.875rem",
+              borderColor: errors.password ? "var(--color-danger)" : undefined,
             }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-subtle)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
@@ -162,10 +181,8 @@ export function LoginPage() {
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                {...register("password")}
                 placeholder="••••••••"
-                required
                 autoComplete="current-password"
                 style={{
                   flex: 1,
@@ -195,27 +212,32 @@ export function LoginPage() {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            {errors.password && (
+              <p style={{ color: "var(--color-danger)", fontSize: "0.75rem", marginTop: "0.375rem" }}>
+                {errors.password.message}
+              </p>
+            )}
           </div>
 
-          {error && (
+          {serverError && (
             <div style={{
-              background: "rgba(239,68,68,0.1)",
-              border: "1px solid rgba(239,68,68,0.25)",
+              background: "rgba(239,68,68,0.06)",
+              border: "1px solid rgba(239,68,68,0.15)",
               borderRadius: "var(--radius-sm)",
               padding: "0.75rem 1rem",
-              color: "#fca5a5",
+              color: "#dc2626",
               fontSize: "0.8125rem",
               display: "flex",
               alignItems: "center",
               gap: "0.5rem",
               animation: "fadeIn 0.2s ease",
             }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" x2="12" y1="8" y2="12" />
                 <line x1="12" x2="12.01" y1="16" y2="16" />
               </svg>
-              {error}
+              {serverError}
             </div>
           )}
 
@@ -232,36 +254,35 @@ export function LoginPage() {
               borderRadius: "var(--radius-sm)",
               fontSize: "0.9375rem",
               fontWeight: 600,
-              cursor: isLoading ? "not-allowed" : "pointer",
+              cursor: isSubmitting ? "not-allowed" : "pointer",
               border: "none",
-              background: isLoading
+              background: isSubmitting
                 ? "var(--color-primary)"
                 : "linear-gradient(135deg, var(--color-primary), #818cf8)",
               color: "#fff",
-              opacity: isLoading ? 0.7 : 1,
+              opacity: isSubmitting ? 0.7 : 1,
               transition: "all 0.2s ease",
               marginTop: "0.25rem",
               fontFamily: "inherit",
             }}
-            disabled={isLoading}
-            onMouseEnter={(e) => { if (!isLoading) e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 0 24px var(--color-primary-glow)"; }}
+            disabled={isSubmitting}
+            onMouseEnter={(e) => { if (!isSubmitting) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 0 24px var(--color-primary-glow)"; } }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}
           >
-            {isLoading ? (
+            {isSubmitting ? (
               <Loader2 size={18} className="animate-spin" />
             ) : (
               <LogIn size={18} />
             )}
-            {isLoading ? "Signing in\u2026" : "Sign in"}
+            {isSubmitting ? "Signing in\u2026" : "Sign in"}
           </button>
         </form>
 
-        {/* Dev hint */}
         <div style={{
           marginTop: "1.5rem",
           padding: "0.875rem",
-          background: "rgba(99,102,241,0.06)",
-          border: "1px solid rgba(99,102,241,0.12)",
+          background: "rgba(99,102,241,0.04)",
+          border: "1px solid rgba(99,102,241,0.1)",
           borderRadius: "var(--radius-sm)",
           fontSize: "0.75rem",
           color: "var(--color-text-muted)",
