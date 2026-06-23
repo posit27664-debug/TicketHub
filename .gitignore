@@ -19,6 +19,15 @@ server/src/generated/
 # Bun
 .bun/
 
+# Screenshots
+*.png
+
+# E2E / Playwright
+e2e-report/
+e2e-results/
+test-results/
+e2e/.server-pid
+
 # Logs
 *.log
 npm-debug.log*

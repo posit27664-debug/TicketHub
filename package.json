@@ -16,9 +16,15 @@
     "db:generate": "cd server && bun run db:generate",
     "db:migrate": "cd server && bun run db:migrate",
     "db:studio": "cd server && bun run db:studio",
-    "db:seed": "cd server && bun run db:seed"
+    "db:seed": "cd server && bun run db:seed",
+    "e2e:db:up": "docker compose up -d postgres_test",
+    "e2e:db:setup": "bash scripts/setup-test-db.sh",
+    "e2e:test": "playwright test",
+    "e2e:test:ui": "playwright test --ui",
+    "e2e:report": "playwright show-report e2e-report"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "concurrently": "^9.1.2"
   }
 }

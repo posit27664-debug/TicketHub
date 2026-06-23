@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import { errorHandler } from "./middleware/errorHandler";
+import { apiLimiter } from "./middleware/rateLimiter";
 import { usersRouter } from "./routes/users";
 import { ticketsRouter } from "./routes/tickets";
 import { aiRouter } from "./routes/ai";
@@ -24,6 +25,10 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
+
+if (process.env.NODE_ENV === "production") {
+  app.use("/api/", apiLimiter);
+}
 
 // ─── Auth Handler ─────────────────────────────────────────────────────────────
 app.all("/api/auth/*", toNodeHandler(auth));
