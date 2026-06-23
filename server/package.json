@@ -1,0 +1,38 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun dist/index.js",
+    "db:generate": "bunx prisma generate",
+    "db:migrate": "bunx prisma migrate dev",
+    "db:migrate:prod": "bunx prisma migrate deploy",
+    "db:studio": "bunx prisma studio",
+    "db:seed": "bun src/db/seed.ts",
+    "db:reset": "bunx prisma migrate reset"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.37.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@prisma/client-runtime-utils": "^7.8.0",
+    "better-auth": "^1.6.20",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.22.0",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^22.15.21",
+    "@types/pg": "^8.20.0",
+    "prisma": "^7.8.0",
+    "typescript": "^5.8.3"
+  }
+}

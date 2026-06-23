@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  AGENT
+}
+
+enum TicketStatus {
+  OPEN
+  RESOLVED
+  CLOSED
+}
+
+enum TicketCategory {
+  GENERAL_QUESTION
+  TECHNICAL_QUESTION
+  REFUND_REQUEST
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(AGENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  assignedTickets Ticket[] @relation("AssignedAgent")
+  createdTickets  Ticket[] @relation("CreatedBy")
+
+  emailVerified Boolean   @default(false)
+  image         String?
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("users")
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  subject     String
+  body        String
+  status      TicketStatus   @default(OPEN)
+  category    TicketCategory @default(GENERAL_QUESTION)
+  fromName    String? // Sender name from email
+  fromEmail   String? // Sender email address
+  emailThread String? // Email thread ID for threading
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // AI fields
+  aiSummary        String?
+  aiSuggestedReply String?
+
+  // Relations
+  assignedAgentId String?
+  assignedAgent   User?   @relation("AssignedAgent", fields: [assignedAgentId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("CreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  messages Message[]
+
+  @@map("tickets")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  ticketId  String
+  body      String
+  fromName  String
+  fromEmail String
+  isAgent   Boolean  @default(false) // true = agent reply, false = customer message
+  sentAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  // Relations
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model KnowledgeBase {
+  id        String          @id @default(cuid())
+  title     String
+  content   String
+  category  TicketCategory?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@map("knowledge_base")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
