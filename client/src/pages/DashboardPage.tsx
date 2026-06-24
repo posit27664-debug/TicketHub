@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { SkeletonBox, SkeletonStatCards, SkeletonTable } from "../components/Skeleton";
 import {
   Ticket,
   CheckCircle2,
@@ -72,33 +73,50 @@ function StatCard({
   );
 }
 
+const categoryInfo: Record<string, { label: string; icon: React.ComponentType<{ size?: number; color?: string }>; color: string }> = {
+  GENERAL_QUESTION: { label: "General", icon: HelpCircle, color: "#6366f1" },
+  TECHNICAL_QUESTION: { label: "Technical", icon: Wrench, color: "#3b82f6" },
+  REFUND_REQUEST: { label: "Refund", icon: CreditCard, color: "#ef4444" },
+};
+
 export function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentTickets, setRecentTickets] = useState<TicketType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ["tickets", "stats"],
+    queryFn: async () => {
+      const { data } = await api.get<{ stats: DashboardStats }>("/tickets/stats");
+      return data.stats;
+    },
+  });
 
-  useEffect(() => {
-    Promise.all([
-      api.get<{ stats: DashboardStats }>("/tickets/stats"),
-      api.get<{ tickets: TicketType[] }>("/tickets?limit=5&sortBy=createdAt&sortOrder=desc"),
-    ])
-      .then(([statsRes, ticketsRes]) => {
-        setStats(statsRes.data.stats);
-        setRecentTickets(ticketsRes.data.tickets);
-      })
-      .finally(() => setIsLoading(false));
-  }, []);
+  const { data: recentTickets = [], isLoading: ticketsLoading } = useQuery({
+    queryKey: ["tickets", "recent"],
+    queryFn: async () => {
+      const { data } = await api.get<{ tickets: TicketType[] }>(
+        "/tickets?limit=5&sortBy=createdAt&sortOrder=desc"
+      );
+      return data.tickets;
+    },
+  });
 
-  const categoryInfo: Record<string, { label: string; icon: React.ComponentType<{ size?: number; color?: string }>; color: string }> = {
-    GENERAL_QUESTION: { label: "General", icon: HelpCircle, color: "#6366f1" },
-    TECHNICAL_QUESTION: { label: "Technical", icon: Wrench, color: "#3b82f6" },
-    REFUND_REQUEST: { label: "Refund", icon: CreditCard, color: "#ef4444" },
-  };
+  const isLoading = statsLoading || ticketsLoading;
 
   if (isLoading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", padding: "4rem" }}>
-        <div className="spinner" />
+      <div className="animate-fade-in">
+        <SkeletonBox style={{ width: "180px", height: "28px", marginBottom: "0.375rem" }} />
+        <SkeletonBox style={{ width: "260px", height: "14px", marginBottom: "2rem" }} />
+        <SkeletonStatCards />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "1.5rem" }}>
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <SkeletonTable rows={5} cols={3} />
+          </div>
+          <div className="card" style={{ padding: "1.5rem" }}>
+            <SkeletonBox style={{ width: "100px", height: "16px", marginBottom: "1.25rem" }} />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonBox key={i} style={{ width: "100%", height: "32px", marginBottom: "0.875rem" }} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

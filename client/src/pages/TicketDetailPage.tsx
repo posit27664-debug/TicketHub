@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { SkeletonBox, SkeletonDetailPage } from "../components/Skeleton";
 import {
   ArrowLeft,
   Bot,
@@ -21,12 +23,12 @@ import {
 } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
 
-function AiPanel({ ticket, onUpdate }: { ticket: Ticket; onUpdate: (t: Ticket) => void }) {
-  const [loading, setLoading] = useState<"classify" | "summarize" | "suggest" | null>(null);
+function AiPanel({ ticket }: { ticket: Ticket }) {
+  const queryClient = useQueryClient();
+  const ticketId = ticket.id;
 
-  const runAi = async (action: "classify" | "summarize" | "suggest") => {
-    setLoading(action);
-    try {
+  const mutation = useMutation({
+    mutationFn: async (action: "classify" | "summarize" | "suggest") => {
       const endpoint =
         action === "classify"
           ? "/ai/classify"
@@ -34,16 +36,12 @@ function AiPanel({ ticket, onUpdate }: { ticket: Ticket; onUpdate: (t: Ticket) =
           ? "/ai/summarize"
           : "/ai/suggest-reply";
 
-      const { data } = await api.post<{ ticket: Ticket }>(endpoint, {
-        ticketId: ticket.id,
-      });
-      onUpdate(data.ticket);
-    } catch (err) {
-      console.error("AI action failed", err);
-    } finally {
-      setLoading(null);
-    }
-  };
+      await api.post<{ ticket: Ticket }>(endpoint, { ticketId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets", ticketId] });
+    },
+  });
 
   const aiBtn: React.CSSProperties = {
     display: "inline-flex",
@@ -72,46 +70,46 @@ function AiPanel({ ticket, onUpdate }: { ticket: Ticket; onUpdate: (t: Ticket) =
         <button
           id="ai-classify-btn"
           style={aiBtn}
-          disabled={loading !== null}
-          onClick={() => runAi("classify")}
+          disabled={mutation.isPending}
+          onClick={() => mutation.mutate("classify")}
           onMouseEnter={(e) => {
-            if (!loading) { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; e.currentTarget.style.borderColor = "var(--color-border-strong)"; }
+            if (!mutation.isPending) { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; e.currentTarget.style.borderColor = "var(--color-border-strong)"; }
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "var(--color-surface-2)"; e.currentTarget.style.borderColor = "var(--color-border)";
           }}
         >
-          {loading === "classify" ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <Sparkles size={14} />}
+          {mutation.isPending && mutation.variables === "classify" ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <Sparkles size={14} />}
           Auto-classify
         </button>
         <button
           id="ai-summarize-btn"
           style={aiBtn}
-          disabled={loading !== null}
-          onClick={() => runAi("summarize")}
+          disabled={mutation.isPending}
+          onClick={() => mutation.mutate("summarize")}
           onMouseEnter={(e) => {
-            if (!loading) { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; e.currentTarget.style.borderColor = "var(--color-border-strong)"; }
+            if (!mutation.isPending) { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; e.currentTarget.style.borderColor = "var(--color-border-strong)"; }
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "var(--color-surface-2)"; e.currentTarget.style.borderColor = "var(--color-border)";
           }}
         >
-          {loading === "summarize" ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <FileText size={14} />}
+          {mutation.isPending && mutation.variables === "summarize" ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <FileText size={14} />}
           Generate Summary
         </button>
         <button
           id="ai-suggest-btn"
           style={aiBtn}
-          disabled={loading !== null}
-          onClick={() => runAi("suggest")}
+          disabled={mutation.isPending}
+          onClick={() => mutation.mutate("suggest")}
           onMouseEnter={(e) => {
-            if (!loading) { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; e.currentTarget.style.borderColor = "var(--color-border-strong)"; }
+            if (!mutation.isPending) { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; e.currentTarget.style.borderColor = "var(--color-border-strong)"; }
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "var(--color-surface-2)"; e.currentTarget.style.borderColor = "var(--color-border)";
           }}
         >
-          {loading === "suggest" ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <MessageCircle size={14} />}
+          {mutation.isPending && mutation.variables === "suggest" ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <MessageCircle size={14} />}
           Suggest Reply
         </button>
       </div>
@@ -157,64 +155,58 @@ export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [agents, setAgents] = useState<UserType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [replyBody, setReplyBody] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
 
-  useEffect(() => {
-    Promise.all([
-      api.get<{ ticket: Ticket }>(`/tickets/${id}`),
-      user?.role === "ADMIN"
-        ? api.get<{ users: UserType[] }>("/users")
-        : Promise.resolve({ data: { users: [] } }),
-    ])
-      .then(([tRes, uRes]) => {
-        setTicket(tRes.data.ticket);
-        setAgents(uRes.data.users.filter((u) => u.role === "AGENT"));
-      })
-      .finally(() => setIsLoading(false));
-  }, [id, user]);
+  const { data: ticket, isLoading } = useQuery({
+    queryKey: ["tickets", id],
+    queryFn: async () => {
+      const { data } = await api.get<{ ticket: Ticket }>(`/tickets/${id}`);
+      return data.ticket;
+    },
+    enabled: !!id,
+  });
 
-  const handleUpdate = async (patch: Partial<Ticket>) => {
-    if (!ticket) return;
-    setIsUpdating(true);
-    try {
-      const { data } = await api.patch<{ ticket: Ticket }>(
-        `/tickets/${ticket.id}`,
-        patch
-      );
-      setTicket(data.ticket);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+  const { data: agents = [] } = useQuery({
+    queryKey: ["users", "agents"],
+    queryFn: async () => {
+      const { data } = await api.get<{ users: UserType[] }>("/users");
+      return data.users.filter((u) => u.role === "AGENT");
+    },
+    enabled: user?.role === "ADMIN" && !!id,
+  });
 
-  const handleSendReply = async () => {
-    if (!ticket || !replyBody.trim()) return;
-    setIsSending(true);
-    try {
-      await api.post(`/tickets/${ticket.id}/messages`, {
+  const updateMutation = useMutation({
+    mutationFn: async (patch: Partial<Ticket>) => {
+      const { data } = await api.patch<{ ticket: Ticket }>(`/tickets/${id}`, patch);
+      return data.ticket;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets", id] });
+    },
+  });
+
+  const replyMutation = useMutation({
+    mutationFn: async () => {
+      await api.post(`/tickets/${id}/messages`, {
         body: replyBody,
         fromName: user!.name,
         fromEmail: user!.email,
         isAgent: true,
       });
-      const { data } = await api.get<{ ticket: Ticket }>(`/tickets/${ticket.id}`);
-      setTicket(data.ticket);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets", id] });
       setReplyBody("");
-    } finally {
-      setIsSending(false);
-    }
-  };
+    },
+  });
 
   if (isLoading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", padding: "4rem" }}>
-        <div className="spinner" />
+      <div className="animate-fade-in">
+        <SkeletonBox style={{ width: "80px", height: "14px", marginBottom: "1.25rem" }} />
+        <SkeletonDetailPage />
       </div>
     );
   }
@@ -367,17 +359,17 @@ export function TicketDetailPage() {
                   borderRadius: "6px",
                   fontSize: "0.875rem",
                   fontWeight: 500,
-                  cursor: isSending || !replyBody.trim() ? "not-allowed" : "pointer",
+                  cursor: replyMutation.isPending || !replyBody.trim() ? "not-allowed" : "pointer",
                   border: "none",
                   background: "var(--color-primary)",
                   color: "white",
                   transition: "all 0.15s ease",
-                  opacity: isSending || !replyBody.trim() ? 0.5 : 1,
+                  opacity: replyMutation.isPending || !replyBody.trim() ? 0.5 : 1,
                 }}
-                disabled={isSending || !replyBody.trim()}
-                onClick={handleSendReply}
+                disabled={replyMutation.isPending || !replyBody.trim()}
+                onClick={() => replyMutation.mutate()}
                 onMouseEnter={(e) => {
-                  if (!isSending && replyBody.trim()) {
+                  if (!replyMutation.isPending && replyBody.trim()) {
                     e.currentTarget.style.background = "var(--color-primary-hover)";
                     e.currentTarget.style.boxShadow = "var(--color-shadow-glow)";
                     e.currentTarget.style.transform = "translateY(-2px)";
@@ -389,8 +381,8 @@ export function TicketDetailPage() {
                   e.currentTarget.style.transform = "none";
                 }}
               >
-                {isSending ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <Send size={14} />}
-                {isSending ? "Sending\u2026" : "Send Reply"}
+                {replyMutation.isPending ? <Loader2 size={14} style={{ animation: "spin 0.6s linear infinite" }} /> : <Send size={14} />}
+                {replyMutation.isPending ? "Sending\u2026" : "Send Reply"}
               </button>
             </div>
           </div>
@@ -410,8 +402,8 @@ export function TicketDetailPage() {
                     id="ticket-status"
                     style={{ ...inputBase, cursor: "pointer", appearance: "none", WebkitAppearance: "none", paddingRight: "1.5rem" }}
                     value={ticket.status}
-                    disabled={isUpdating}
-                    onChange={(e) => handleUpdate({ status: e.target.value as TicketStatus })}
+                    disabled={updateMutation.isPending}
+                    onChange={(e) => updateMutation.mutate({ status: e.target.value as TicketStatus })}
                     onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--color-primary-glow)"; }}
                     onBlur={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.boxShadow = "none"; }}
                   >
@@ -430,8 +422,8 @@ export function TicketDetailPage() {
                     id="ticket-category"
                     style={{ ...inputBase, cursor: "pointer", appearance: "none", WebkitAppearance: "none", paddingRight: "1.5rem" }}
                     value={ticket.category}
-                    disabled={isUpdating}
-                    onChange={(e) => handleUpdate({ category: e.target.value as TicketCategory })}
+                    disabled={updateMutation.isPending}
+                    onChange={(e) => updateMutation.mutate({ category: e.target.value as TicketCategory })}
                     onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--color-primary-glow)"; }}
                     onBlur={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.boxShadow = "none"; }}
                   >
@@ -451,8 +443,8 @@ export function TicketDetailPage() {
                       id="ticket-agent"
                       style={{ ...inputBase, cursor: "pointer", appearance: "none", WebkitAppearance: "none", paddingRight: "1.5rem" }}
                       value={ticket.assignedAgentId ?? ""}
-                      disabled={isUpdating}
-                      onChange={(e) => handleUpdate({ assignedAgentId: e.target.value || null } as Partial<Ticket>)}
+                      disabled={updateMutation.isPending}
+                      onChange={(e) => updateMutation.mutate({ assignedAgentId: e.target.value || null } as Partial<Ticket>)}
                       onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--color-primary-glow)"; }}
                       onBlur={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.boxShadow = "none"; }}
                     >
@@ -468,7 +460,7 @@ export function TicketDetailPage() {
             </div>
           </div>
 
-          <AiPanel ticket={ticket} onUpdate={setTicket} />
+          <AiPanel ticket={ticket} />
         </div>
       </div>
     </div>

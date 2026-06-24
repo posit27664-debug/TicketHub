@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { SkeletonTable } from "../components/Skeleton";
 import {
   Plus,
   Search,
@@ -43,9 +44,6 @@ const inputStyle: React.CSSProperties = {
 };
 
 export function TicketsPage() {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [pagination, setPagination] = useState<Pagination | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const status = searchParams.get("status") as TicketStatus | null;
@@ -53,9 +51,9 @@ export function TicketsPage() {
   const search = searchParams.get("search") ?? "";
   const page = Number(searchParams.get("page") ?? 1);
 
-  const fetchTickets = useCallback(async () => {
-    setIsLoading(true);
-    try {
+  const { data, isLoading } = useQuery({
+    queryKey: ["tickets", { status, category, search, page }],
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (status) params.set("status", status);
       if (category) params.set("category", category);
@@ -68,14 +66,12 @@ export function TicketsPage() {
       const { data } = await api.get<{ tickets: Ticket[]; pagination: Pagination }>(
         `/tickets?${params}`
       );
-      setTickets(data.tickets);
-      setPagination(data.pagination);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [status, category, search, page]);
+      return data;
+    },
+  });
 
-  useEffect(() => { fetchTickets(); }, [fetchTickets]);
+  const tickets = data?.tickets ?? [];
+  const pagination = data?.pagination ?? null;
 
   const setFilter = (key: string, value: string | null) => {
     setSearchParams((prev) => {
@@ -274,9 +270,7 @@ export function TicketsPage() {
         style={{ padding: 0, overflowX: "auto" }}
       >
         {isLoading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: "3rem" }}>
-            <div className="spinner !w-5 !h-5" />
-          </div>
+          <SkeletonTable rows={8} cols={5} />
         ) : tickets.length === 0 ? (
           <div style={{ textAlign: "center", padding: "4rem 2rem", color: "var(--color-text-muted)" }}>
             <Search size={40} style={{ margin: "0 auto 1rem", opacity: 0.3 }} />

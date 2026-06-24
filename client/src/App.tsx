@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/Layout";
@@ -9,19 +9,29 @@ import { TicketsPage } from "./pages/TicketsPage";
 import { TicketDetailPage } from "./pages/TicketDetailPage";
 import { NewTicketPage } from "./pages/NewTicketPage";
 import { UsersPage } from "./pages/UsersPage";
+import axios from "axios";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
+  },
+});
 
 type HealthStatus = { status: string; timestamp: string } | null;
 
 function HealthBanner() {
-  const [health, setHealth] = useState<HealthStatus>(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    fetch("http://localhost:3001/health")
-      .then((res) => res.json())
-      .then((data: HealthStatus) => setHealth(data))
-      .catch(() => setError(true));
-  }, []);
+  const { data: health, error } = useQuery<HealthStatus>({
+    queryKey: ["health"],
+    queryFn: async () => {
+      const { data } = await axios.get("http://localhost:3001/health");
+      return data as HealthStatus;
+    },
+    refetchInterval: 15_000,
+  });
 
   if (!health && !error) return null;
 
@@ -51,7 +61,6 @@ function HealthBanner() {
         animation: "fadeIn 0.4s ease forwards",
       }}
     >
-      {/* Status dot */}
       <span
         style={{
           width: 8,
@@ -81,34 +90,29 @@ function HealthBanner() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <HealthBanner />
-        <Routes>
-          {/* Public */}
-          <Route path="/login" element={<LoginPage />} />
-
-          {/* Protected */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/tickets" element={<TicketsPage />} />
-              <Route path="/tickets/new" element={<NewTicketPage />} />
-              <Route path="/tickets/:id" element={<TicketDetailPage />} />
-
-              {/* Admin only */}
-              <Route element={<AdminRoute />}>
-                <Route path="/users" element={<UsersPage />} />
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <HealthBanner />
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/tickets" element={<TicketsPage />} />
+                <Route path="/tickets/new" element={<NewTicketPage />} />
+                <Route path="/tickets/:id" element={<TicketDetailPage />} />
+                <Route element={<AdminRoute />}>
+                  <Route path="/users" element={<UsersPage />} />
+                </Route>
               </Route>
             </Route>
-          </Route>
-
-          {/* Redirects */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 
