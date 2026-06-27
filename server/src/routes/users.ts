@@ -1,6 +1,6 @@
 import { Router } from "express";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { hashPassword } from "@better-auth/utils/password";
 import { prisma } from "../db/client";
 import { createError } from "../middleware/errorHandler";
 import { requireAuth, requireAdmin } from "../middleware/auth";
@@ -28,6 +28,7 @@ const updateUserSchema = z.object({
 usersRouter.get("/", requireAdmin, async (_req, res, next) => {
   try {
     const users = await prisma.user.findMany({
+      where: { deletedAt: null },
       select: {
         id: true,
         email: true,
@@ -37,6 +38,25 @@ usersRouter.get("/", requireAdmin, async (_req, res, next) => {
         _count: { select: { assignedTickets: true } },
       },
       orderBy: { createdAt: "desc" },
+    });
+    res.json({ users });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/users/agents — Authenticated users can list agents
+usersRouter.get("/agents", async (_req, res, next) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { deletedAt: null, role: "AGENT" },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      },
+      orderBy: { name: "asc" },
     });
     res.json({ users });
   } catch (error) {
@@ -79,9 +99,22 @@ usersRouter.post("/", requireAdmin, async (req, res, next) => {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) return next(createError("Email already in use", 409));
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await hashPassword(password);
     const user = await prisma.user.create({
-      data: { email, name, password: hashedPassword, role },
+      data: {
+        email,
+        name,
+        role,
+        emailVerified: true,
+        accounts: {
+          create: {
+            id: crypto.randomUUID(),
+            accountId: crypto.randomUUID(),
+            providerId: "credential",
+            password: hashedPassword,
+          },
+        },
+      },
       select: { id: true, email: true, name: true, role: true, createdAt: true },
     });
 
@@ -102,7 +135,11 @@ usersRouter.patch("/:id", requireAdmin, async (req, res, next) => {
     const { password, ...rest } = result.data;
     const data: Record<string, unknown> = { ...rest };
     if (password) {
-      data.password = await bcrypt.hash(password, 12);
+      const hashedPassword = await hashPassword(password);
+      await prisma.account.updateMany({
+        where: { userId: req.params.id, providerId: "credential" },
+        data: { password: hashedPassword },
+      });
     }
 
     const user = await prisma.user.update({
@@ -117,15 +154,23 @@ usersRouter.patch("/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
-// DELETE /api/users/:id — Admin only
+// DELETE /api/users/:id — Admin only (soft delete)
 usersRouter.delete("/:id", requireAdmin, async (req, res, next) => {
   try {
-    // Prevent deleting yourself
     if (req.params.id === req.user!.id) {
       return next(createError("Cannot delete your own account", 400));
     }
 
-    await prisma.user.delete({ where: { id: req.params.id } });
+    const target = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!target) return next(createError("User not found", 404));
+    if (target.role === "ADMIN") {
+      return next(createError("Cannot delete an admin user", 400));
+    }
+
+    await prisma.user.update({
+      where: { id: req.params.id },
+      data: { deletedAt: new Date() },
+    });
     res.json({ message: "User deleted" });
   } catch (error) {
     next(error);

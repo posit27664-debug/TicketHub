@@ -147,26 +147,25 @@ describe("UsersPage", () => {
   it("deletes a user on confirm", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { users: mockUsers } });
     vi.mocked(api.delete).mockResolvedValue({ data: {} });
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     renderPage();
     await screen.findByText("Admin User");
     const deleteBtn = screen.getAllByTitle("Delete user")[0];
     await userEvent.click(deleteBtn);
-    expect(confirmSpy).toHaveBeenCalledWith("Are you sure you want to delete this user? This action cannot be undone.");
+    const confirmBtn = await screen.findByText("Delete");
+    await userEvent.click(confirmBtn);
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/users/2");
     });
-    confirmSpy.mockRestore();
   });
 
   it("does not delete when confirm is cancelled", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { users: mockUsers } });
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
     renderPage();
     await screen.findByText("Admin User");
     const deleteBtn = screen.getAllByTitle("Delete user")[0];
     await userEvent.click(deleteBtn);
+    const cancelBtn = await screen.findByText("Cancel");
+    await userEvent.click(cancelBtn);
     expect(api.delete).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 });

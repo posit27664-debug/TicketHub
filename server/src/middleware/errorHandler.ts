@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import * as Sentry from "@sentry/node";
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -18,7 +19,11 @@ export function errorHandler(
       : err.message;
 
   console.error(`[Error] ${statusCode}: ${err.message}`);
-  if (statusCode === 500) console.error(err.stack);
+  if (statusCode === 500) {
+    console.error(err.stack);
+    // Forward unhandled server errors to Sentry
+    Sentry.captureException(err);
+  }
 
   res.status(statusCode).json({
     error: {

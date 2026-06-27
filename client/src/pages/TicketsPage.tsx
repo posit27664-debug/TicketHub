@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonTable } from "../components/Skeleton";
@@ -6,7 +7,11 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
   X,
+  Filter,
 } from "lucide-react";
 import api from "../lib/api";
 import type { Ticket, Pagination, TicketStatus, TicketCategory } from "../types";
@@ -16,6 +21,14 @@ import {
   formatCategoryLabel,
   formatRelativeDate,
 } from "../lib/utils";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  createColumnHelper,
+  flexRender,
+  type SortingState,
+} from "@tanstack/react-table";
 
 const btn: React.CSSProperties = {
   display: "inline-flex",
@@ -43,6 +56,75 @@ const inputStyle: React.CSSProperties = {
   transition: "all 0.15s ease",
 };
 
+const columnHelper = createColumnHelper<Ticket>();
+
+const columns = [
+  columnHelper.accessor("subject", {
+    header: "Subject",
+    cell: (info) => {
+      const ticket = info.row.original;
+      return (
+        <Link
+          to={`/tickets/${ticket.id}`}
+          style={{ color: "var(--color-text)", textDecoration: "none", fontWeight: 500 }}
+        >
+          {ticket.subject}
+        </Link>
+      );
+    },
+  }),
+  columnHelper.accessor("fromEmail", {
+    header: "Sender",
+    cell: (info) => {
+      const row = info.row.original;
+      return (
+        <div>
+          <div style={{ color: "var(--color-text)", fontSize: "0.875rem" }}>{row.fromName}</div>
+          {row.fromEmail && (
+            <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", marginTop: "0.125rem" }}>
+              {row.fromEmail}
+            </div>
+          )}
+        </div>
+      );
+    },
+  }),
+  columnHelper.accessor("status", {
+    header: "Status",
+    cell: (info) => (
+      <span className={getStatusBadgeClass(info.getValue())}>
+        {info.getValue()}
+      </span>
+    ),
+  }),
+  columnHelper.accessor("category", {
+    header: "Category",
+    cell: (info) => (
+      <span className={getCategoryBadgeClass(info.getValue())}>
+        {formatCategoryLabel(info.getValue())}
+      </span>
+    ),
+  }),
+  columnHelper.accessor("assignedAgent", {
+    header: "Assigned To",
+    enableSorting: false,
+    cell: (info) => {
+      const agent = info.getValue();
+      return agent?.name ?? (
+        <span style={{ color: "var(--color-text-subtle)" }}>{'\u2014'}</span>
+      );
+    },
+  }),
+  columnHelper.accessor("createdAt", {
+    header: "Created",
+    cell: (info) => (
+      <span style={{ whiteSpace: "nowrap" }}>
+        {formatRelativeDate(info.getValue())}
+      </span>
+    ),
+  }),
+];
+
 export function TicketsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -50,18 +132,20 @@ export function TicketsPage() {
   const category = searchParams.get("category") as TicketCategory | null;
   const search = searchParams.get("search") ?? "";
   const page = Number(searchParams.get("page") ?? 1);
+  const sortBy = searchParams.get("sortBy") ?? "createdAt";
+  const sortOrder = searchParams.get("sortOrder") ?? "desc";
 
   const { data, isLoading } = useQuery({
-    queryKey: ["tickets", { status, category, search, page }],
+    queryKey: ["tickets", { status, category, search, page, sortBy, sortOrder }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (status) params.set("status", status);
       if (category) params.set("category", category);
       if (search) params.set("search", search);
       params.set("page", String(page));
-      params.set("limit", "15");
-      params.set("sortBy", "createdAt");
-      params.set("sortOrder", "desc");
+      params.set("limit", "10");
+      params.set("sortBy", sortBy);
+      params.set("sortOrder", sortOrder);
 
       const { data } = await api.get<{ tickets: Ticket[]; pagination: Pagination }>(
         `/tickets?${params}`
@@ -72,6 +156,36 @@ export function TicketsPage() {
 
   const tickets = data?.tickets ?? [];
   const pagination = data?.pagination ?? null;
+
+  const [sorting, setSorting] = useState<SortingState>(() => [
+    { id: sortBy, desc: sortOrder === "desc" },
+  ]);
+
+  const table = useReactTable({
+    data: tickets,
+    columns,
+    state: { sorting },
+    enableSortingRemoval: false,
+    onSortingChange: (updater) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      setSorting(next);
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev);
+        if (next.length > 0) {
+          p.set("sortBy", next[0].id);
+          p.set("sortOrder", next[0].desc ? "desc" : "asc");
+        } else {
+          p.delete("sortBy");
+          p.delete("sortOrder");
+        }
+        p.delete("page");
+        return p;
+      });
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    manualSorting: true,
+  });
 
   const setFilter = (key: string, value: string | null) => {
     setSearchParams((prev) => {
@@ -188,7 +302,7 @@ export function TicketsPage() {
               ...inputStyle,
               paddingLeft: "2rem",
             }}
-            placeholder="Search tickets\u2026"
+            placeholder="Search tickets..."
             value={search}
             onChange={(e) => setFilter("search", e.target.value || null)}
             onFocus={(e) => {
@@ -202,50 +316,101 @@ export function TicketsPage() {
           />
         </div>
 
-        <div style={{ display: "flex", gap: "0.375rem" }}>
-          {[
-            { key: null as string | null, label: "All" },
-            ...statusOptions.map((s) => ({ key: s, label: s })),
-          ].map(({ key, label }) => {
-            const active = key === status || (key === null && !status);
-            return (
-              <button
-                key={label}
-                style={active ? { ...primaryBtn(true), outline: "none" } : { ...secondaryBtn(true), outline: "none" }}
-                onClick={() => setFilter("status", key)}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
 
-        <select
-          id="category-filter"
-          style={{
-            ...inputStyle,
-            width: "auto",
-            cursor: "pointer",
-            appearance: "none",
-            WebkitAppearance: "none",
-            paddingRight: "1.5rem",
-          }}
-          value={category ?? ""}
-          onChange={(e) => setFilter("category", e.target.value || null)}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = "var(--color-primary)";
-            e.currentTarget.style.boxShadow = "0 0 0 3px var(--color-primary-glow)";
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = "var(--color-border)";
-            e.currentTarget.style.boxShadow = "none";
-          }}
-        >
-          <option value="">All categories</option>
-          {categoryOptions.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
+
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <div style={{ position: "relative" }}>
+            <Filter
+              size={14}
+              style={{
+                position: "absolute",
+                left: "0.625rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--color-text-subtle)",
+                pointerEvents: "none",
+              }}
+            />
+            <select
+              id="status-filter"
+              style={{
+                ...inputStyle,
+                width: "auto",
+                cursor: "pointer",
+                appearance: "none",
+                WebkitAppearance: "none",
+                paddingLeft: "2rem",
+                paddingRight: "1.75rem",
+              }}
+              value={status ?? ""}
+              onChange={(e) => setFilter("status", e.target.value || null)}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-primary)";
+                e.currentTarget.style.boxShadow = "0 0 0 3px var(--color-primary-glow)";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-border)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              <option value="">All statuses</option>
+              {statusOptions.map((s) => (
+                <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
+              ))}
+            </select>
+            <ChevronDown
+              size={14}
+              style={{
+                position: "absolute",
+                right: "0.5rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--color-text-subtle)",
+                pointerEvents: "none",
+              }}
+            />
+          </div>
+
+          <div style={{ position: "relative" }}>
+            <select
+              id="category-filter"
+              style={{
+                ...inputStyle,
+                width: "auto",
+                cursor: "pointer",
+                appearance: "none",
+                WebkitAppearance: "none",
+                paddingRight: "1.75rem",
+              }}
+              value={category ?? ""}
+              onChange={(e) => setFilter("category", e.target.value || null)}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-primary)";
+                e.currentTarget.style.boxShadow = "0 0 0 3px var(--color-primary-glow)";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-border)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              <option value="">All categories</option>
+              {categoryOptions.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+            <ChevronDown
+              size={14}
+              style={{
+                position: "absolute",
+                right: "0.5rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--color-text-subtle)",
+                pointerEvents: "none",
+              }}
+            />
+          </div>
+        </div>
 
         {(status || category || search) && (
           <button
@@ -270,7 +435,7 @@ export function TicketsPage() {
         style={{ padding: 0, overflowX: "auto" }}
       >
         {isLoading ? (
-          <SkeletonTable rows={8} cols={5} />
+          <SkeletonTable rows={8} cols={6} />
         ) : tickets.length === 0 ? (
           <div style={{ textAlign: "center", padding: "4rem 2rem", color: "var(--color-text-muted)" }}>
             <Search size={40} style={{ margin: "0 auto 1rem", opacity: 0.3 }} />
@@ -280,53 +445,58 @@ export function TicketsPage() {
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr>
-                <th style={thStyle}>Subject</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Category</th>
-                <th style={thStyle}>Assigned To</th>
-                <th style={thStyle}>Created</th>
-              </tr>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    const sorted = header.column.getIsSorted();
+                    const canSort = header.column.getCanSort();
+                    return (
+                      <th
+                        key={header.id}
+                        style={{
+                          ...thStyle,
+                          cursor: canSort ? "pointer" : "default",
+                          userSelect: "none",
+                        }}
+                        onClick={header.column.getToggleSortingHandler()}
+                        onMouseEnter={(e) => {
+                          if (canSort) e.currentTarget.style.color = "var(--color-text)";
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!sorted) e.currentTarget.style.color = "var(--color-text-subtle)";
+                        }}
+                      >
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem" }}>
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {canSort && !sorted && (
+                            <ChevronsUpDown size={13} style={{ opacity: 0.3 }} />
+                          )}
+                          {sorted === "asc" && (
+                            <ChevronUp size={14} style={{ color: "var(--color-primary)" }} />
+                          )}
+                          {sorted === "desc" && (
+                            <ChevronDown size={14} style={{ color: "var(--color-primary)" }} />
+                          )}
+                        </span>
+                      </th>
+                    );
+                  })}
+                </tr>
+              ))}
             </thead>
             <tbody>
-              {tickets.map((ticket) => (
+              {table.getRowModel().rows.map((row) => (
                 <tr
-                  key={ticket.id}
+                  key={row.id}
                   style={{ transition: "background-color 0.1s ease" }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                 >
-                  <td style={tdStyle}>
-                    <Link
-                      to={`/tickets/${ticket.id}`}
-                      style={{ color: "var(--color-text)", textDecoration: "none", fontWeight: 500 }}
-                    >
-                      {ticket.subject}
-                    </Link>
-                    {ticket.fromEmail && (
-                      <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", marginTop: "0.125rem" }}>
-                        {ticket.fromName} &lt;{ticket.fromEmail}&gt;
-                      </div>
-                    )}
-                  </td>
-                  <td style={tdStyle}>
-                    <span className={getStatusBadgeClass(ticket.status)}>
-                      {ticket.status}
-                    </span>
-                  </td>
-                  <td style={tdStyle}>
-                    <span className={getCategoryBadgeClass(ticket.category)}>
-                      {formatCategoryLabel(ticket.category)}
-                    </span>
-                  </td>
-                  <td style={{ ...tdStyle, color: "var(--color-text-muted)" }}>
-                    {ticket.assignedAgent?.name ?? (
-                      <span style={{ color: "var(--color-text-subtle)" }}>{'\u2014'}</span>
-                    )}
-                  </td>
-                  <td style={{ ...tdStyle, color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
-                    {formatRelativeDate(ticket.createdAt)}
-                  </td>
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} style={tdStyle}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

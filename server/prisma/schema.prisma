@@ -18,6 +18,8 @@ enum Role {
 }
 
 enum TicketStatus {
+  NEW
+  PROCESSING
   OPEN
   RESOLVED
   CLOSED
@@ -32,12 +34,13 @@ enum TicketCategory {
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String     @id @default(cuid())
+  email     String     @unique
   name      String
-  role      Role     @default(AGENT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      Role       @default(AGENT)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
 
   // Relations
   assignedTickets Ticket[] @relation("AssignedAgent")
@@ -55,7 +58,7 @@ model Ticket {
   id          String         @id @default(cuid())
   subject     String
   body        String
-  status      TicketStatus   @default(OPEN)
+  status      TicketStatus   @default(NEW)
   category    TicketCategory @default(GENERAL_QUESTION)
   fromName    String? // Sender name from email
   fromEmail   String? // Sender email address

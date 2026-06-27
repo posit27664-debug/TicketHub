@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db/client";
 import { createError } from "../middleware/errorHandler";
+import { enqueueClassifyTicket, enqueueAutoResolve } from "../jobs";
 
 export const emailRouter = Router();
 
@@ -90,10 +91,14 @@ emailRouter.post("/inbound", async (req, res, next) => {
         fromName,
         fromEmail,
         emailThread,
-        status: "OPEN",
-        category: "GENERAL_QUESTION", // Will be auto-classified
+        status: "NEW",
+        category: "GENERAL_QUESTION",
       },
     });
+
+    // Enqueue classification and auto-resolve jobs (processed by pg-boss)
+    enqueueClassifyTicket(ticket.id, ticket.subject, ticket.body);
+    enqueueAutoResolve(ticket.id, ticket.subject, ticket.body);
 
     res.status(201).json({ message: "Ticket created", ticketId: ticket.id });
   } catch (error) {

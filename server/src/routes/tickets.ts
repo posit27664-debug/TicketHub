@@ -3,7 +3,8 @@ import { z } from "zod";
 import { prisma } from "../db/client";
 import { createError } from "../middleware/errorHandler";
 import { requireAuth } from "../middleware/auth";
-import type { TicketStatus, TicketCategory, Prisma } from "@prisma/client";
+import { sendReply } from "../lib/sendgrid";
+import type { TicketStatus, TicketCategory, Prisma } from "../generated/prisma/client";
 
 export const ticketsRouter = Router();
 
@@ -21,7 +22,7 @@ const createTicketSchema = z.object({
 });
 
 const updateTicketSchema = z.object({
-  status: z.enum(["OPEN", "RESOLVED", "CLOSED"]).optional(),
+  status: z.enum(["NEW", "PROCESSING", "OPEN", "RESOLVED", "CLOSED"]).optional(),
   category: z
     .enum(["GENERAL_QUESTION", "TECHNICAL_QUESTION", "REFUND_REQUEST"])
     .optional(),
@@ -31,13 +32,13 @@ const updateTicketSchema = z.object({
 });
 
 const listQuerySchema = z.object({
-  status: z.enum(["OPEN", "RESOLVED", "CLOSED"]).optional(),
+  status: z.enum(["NEW", "PROCESSING", "OPEN", "RESOLVED", "CLOSED"]).optional(),
   category: z
     .enum(["GENERAL_QUESTION", "TECHNICAL_QUESTION", "REFUND_REQUEST"])
     .optional(),
   assignedAgentId: z.string().optional(),
   search: z.string().optional(),
-  sortBy: z.enum(["createdAt", "updatedAt", "status"]).default("createdAt"),
+  sortBy: z.enum(["createdAt", "updatedAt", "status", "subject", "fromEmail", "category"]).default("createdAt"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
@@ -55,7 +56,9 @@ ticketsRouter.get("/", async (req, res, next) => {
       query.data;
 
     const where: Prisma.TicketWhereInput = {};
-    if (status) where.status = status as TicketStatus;
+    if (status) {
+      where.status = status as TicketStatus;
+    }
     if (category) where.category = category as TicketCategory;
     if (assignedAgentId) where.assignedAgentId = assignedAgentId;
     if (search) {
@@ -97,10 +100,12 @@ ticketsRouter.get("/", async (req, res, next) => {
 // GET /api/tickets/stats — Dashboard stats
 ticketsRouter.get("/stats", async (_req, res, next) => {
   try {
-    const [open, resolved, closed, byCategory] = await Promise.all([
+    const [newTickets, open, resolved, closed, processing, byCategory] = await Promise.all([
+      prisma.ticket.count({ where: { status: "NEW" } }),
       prisma.ticket.count({ where: { status: "OPEN" } }),
       prisma.ticket.count({ where: { status: "RESOLVED" } }),
       prisma.ticket.count({ where: { status: "CLOSED" } }),
+      prisma.ticket.count({ where: { status: "PROCESSING" } }),
       prisma.ticket.groupBy({
         by: ["category"],
         _count: { _all: true },
@@ -112,13 +117,62 @@ ticketsRouter.get("/stats", async (_req, res, next) => {
         open,
         resolved,
         closed,
-        total: open + resolved + closed,
+        total: newTickets + open + resolved + closed + processing,
         byCategory: byCategory.map((g) => ({
           category: g.category,
           count: g._count._all,
         })),
       },
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/tickets/metrics — 30-day chart data
+ticketsRouter.get("/metrics", async (_req, res, next) => {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [dailyStats, totalCreated, totalResolved] = await Promise.all([
+      prisma.$queryRaw<{ date: string; created: bigint; resolved: bigint }[]>`
+        WITH dates AS (
+          SELECT generate_series(
+            ${thirtyDaysAgo}::date,
+            CURRENT_DATE,
+            '1 day'::interval
+          )::date AS date
+        )
+        SELECT
+          d.date::text,
+          COALESCE(c.cnt, 0) AS created,
+          COALESCE(r.cnt, 0) AS resolved
+        FROM dates d
+        LEFT JOIN (
+          SELECT "createdAt"::date AS date, COUNT(*)::bigint AS cnt
+          FROM tickets
+          WHERE "createdAt" >= ${thirtyDaysAgo}
+          GROUP BY "createdAt"::date
+        ) c ON d.date = c.date
+        LEFT JOIN (
+          SELECT "updatedAt"::date AS date, COUNT(*)::bigint AS cnt
+          FROM tickets
+          WHERE "status" = 'RESOLVED' AND "updatedAt" >= ${thirtyDaysAgo}
+          GROUP BY "updatedAt"::date
+        ) r ON d.date = r.date
+        ORDER BY d.date
+      `,
+      prisma.ticket.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.ticket.count({ where: { status: "RESOLVED", updatedAt: { gte: thirtyDaysAgo } } }),
+    ]);
+
+    const byDay = dailyStats.map((d) => ({
+      date: d.date,
+      created: Number(d.created),
+      resolved: Number(d.resolved),
+    }));
+
+    res.json({ metrics: { total30d: totalCreated, resolved30d: totalResolved, byDay } });
   } catch (error) {
     next(error);
   }
@@ -219,12 +273,27 @@ ticketsRouter.post("/:id/messages", async (req, res, next) => {
       data: { ticketId: req.params.id, ...result.data },
     });
 
-    // If agent replied, optionally update status to RESOLVED
-    if (result.data.isAgent && ticket.status === "OPEN") {
+    // If agent replied, update status to RESOLVED
+    if (result.data.isAgent && ticket.status !== "RESOLVED" && ticket.status !== "CLOSED") {
       await prisma.ticket.update({
         where: { id: req.params.id },
         data: { status: "RESOLVED" },
       });
+    }
+
+    // Send outbound email reply via SendGrid if ticket came from email
+    const updatedTicket = await prisma.ticket.findUnique({
+      where: { id: req.params.id },
+      select: { fromEmail: true, emailThread: true, subject: true },
+    });
+
+    if (result.data.isAgent && updatedTicket?.fromEmail) {
+      sendReply({
+        to: updatedTicket.fromEmail,
+        subject: updatedTicket.subject,
+        body: result.data.body,
+        emailThread: updatedTicket.emailThread,
+      }).catch((err) => console.error("[SendGrid] Failed to send reply:", err));
     }
 
     res.status(201).json({ message });

@@ -307,26 +307,7 @@ export function LoginPage() {
             {isSubmitting ? "Signing in\u2026" : "Sign in"}
           </button>
         </form>
-
-        <div
-          style={{
-            marginTop: "1.5rem",
-            padding: "0.875rem",
-            borderRadius: "6px",
-            backgroundColor: "rgba(238, 242, 255, 0.5)",
-            border: "1px solid rgba(199, 210, 254, 0.6)",
-            fontSize: "0.75rem",
-            color: "var(--color-text-muted)",
-            lineHeight: 1.625,
-          }}
-        >
-          <div style={{ fontWeight: 600, color: "var(--color-text)", marginBottom: "0.25rem" }}>
-            Dev credentials
-          </div>
-          Admin: admin@example.com / password123<br />
-          Agent: agent@tickethub.com / agent123
-        </div>
-      </div>
+       </div>
     </div>
   );
 }

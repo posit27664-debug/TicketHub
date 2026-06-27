@@ -3,6 +3,10 @@ import type { TicketStatus, TicketCategory } from "../types";
 export function getStatusBadgeClass(status: TicketStatus): string {
   const base = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide border";
   switch (status) {
+    case "NEW":
+      return `${base} bg-blue-50 text-blue-700 border-blue-200`;
+    case "PROCESSING":
+      return `${base} bg-purple-50 text-purple-700 border-purple-200`;
     case "OPEN":
       return `${base} bg-amber-50 text-amber-700 border-amber-200`;
     case "RESOLVED":

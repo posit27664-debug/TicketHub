@@ -1,5 +1,5 @@
 export type Role = "ADMIN" | "AGENT";
-export type TicketStatus = "OPEN" | "RESOLVED" | "CLOSED";
+export type TicketStatus = "NEW" | "PROCESSING" | "OPEN" | "RESOLVED" | "CLOSED";
 export type TicketCategory =
   | "GENERAL_QUESTION"
   | "TECHNICAL_QUESTION"
@@ -50,10 +50,23 @@ export interface Pagination {
   totalPages: number;
 }
 
+export interface DailyMetric {
+  date: string;
+  created: number;
+  resolved: number;
+}
+
+export interface TicketMetrics {
+  total30d: number;
+  resolved30d: number;
+  byDay: DailyMetric[];
+}
+
 export interface DashboardStats {
   open: number;
   resolved: number;
   closed: number;
+  processing: number;
   total: number;
   byCategory: { category: TicketCategory; count: number }[];
 }

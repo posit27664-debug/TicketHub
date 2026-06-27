@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -90,29 +91,66 @@ function HealthBanner() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <HealthBanner />
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route element={<ProtectedRoute />}>
-              <Route element={<AppLayout />}>
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/tickets" element={<TicketsPage />} />
-                <Route path="/tickets/new" element={<NewTicketPage />} />
-                <Route path="/tickets/:id" element={<TicketDetailPage />} />
-                <Route element={<AdminRoute />}>
-                  <Route path="/users" element={<UsersPage />} />
+    <Sentry.ErrorBoundary
+      fallback={({ error, resetError }) => (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "100vh",
+            gap: "1rem",
+            fontFamily: "system-ui, sans-serif",
+            background: "#0f1117",
+            color: "#e2e8f0",
+          }}
+        >
+          <h2 style={{ color: "#fc8181" }}>Something went wrong</h2>
+          <p style={{ color: "#a0aec0", maxWidth: 400, textAlign: "center" }}>
+            {(error as Error)?.message || "An unexpected error occurred."}
+          </p>
+          <button
+            onClick={resetError}
+            style={{
+              padding: "0.5rem 1.5rem",
+              borderRadius: "0.375rem",
+              background: "#6366f1",
+              color: "#fff",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Try again
+          </button>
+        </div>
+      )}
+    >
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <HealthBanner />
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route element={<ProtectedRoute />}>
+                <Route element={<AppLayout />}>
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/tickets" element={<TicketsPage />} />
+                  <Route path="/tickets/new" element={<NewTicketPage />} />
+                  <Route path="/tickets/:id" element={<TicketDetailPage />} />
+                  <Route element={<AdminRoute />}>
+                    <Route path="/users" element={<UsersPage />} />
+                  </Route>
                 </Route>
               </Route>
-            </Route>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </Sentry.ErrorBoundary>
   );
 }
 
