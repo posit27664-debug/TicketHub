@@ -68,10 +68,14 @@ Sentry.setupExpressErrorHandler(app);
 app.use(errorHandler);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
-  await startJobQueue();
+
+  startJobQueue().catch((err) =>
+    console.error("Job queue failed to start (non-fatal):", err)
+  );
+
   startImapPolling();
 });
 

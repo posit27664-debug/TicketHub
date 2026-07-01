@@ -42,5 +42,5 @@ WORKDIR /app/server
 
 EXPOSE 3001
 
-# Run DB migrations then start the server
-CMD ["sh", "-c", "bunx prisma migrate deploy && bun dist/index.js"]
+# Start the server (migrations run via preDeployCommand in railway.json)
+CMD ["sh", "-c", "bun dist/index.js"]
