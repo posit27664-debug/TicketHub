@@ -6,8 +6,13 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  throw new Error("DATABASE_URL is not set");
+}
+
 // Create a connection pool with pg
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ connectionString: dbUrl });
 const adapter = new PrismaPg(pool);
 
 export const prisma =

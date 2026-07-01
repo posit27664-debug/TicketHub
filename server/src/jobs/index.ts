@@ -4,12 +4,23 @@ import { sendReply } from "../lib/sendgrid";
 
 const VALID_CATEGORIES = ["GENERAL_QUESTION", "TECHNICAL_QUESTION", "REFUND_REQUEST"];
 
-const boss = new PgBoss(process.env.DATABASE_URL!);
+let boss: PgBoss | null = null;
 
-boss.on("error", (err: unknown) => console.error("[pg-boss]", err));
+function getBoss(): PgBoss {
+  if (!boss) {
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set — cannot start job queue");
+    }
+    boss = new PgBoss(dbUrl);
+    boss.on("error", (err: unknown) => console.error("[pg-boss]", err));
+  }
+  return boss;
+}
 
 export async function startJobQueue() {
-  await boss.start();
+  const b = getBoss();
+  await b.start();
   console.log("  Jobs: pg-boss connected");
 
   await boss.createQueue("classify-ticket");
@@ -52,7 +63,7 @@ Body: ${body}`,
     }
   });
 
-  await boss.work("auto-resolve", async (jobs) => {
+  await b.work("auto-resolve", async (jobs) => {
     const { id, subject, body } = jobs[0].data as {
       id: string;
       subject: string;
@@ -137,11 +148,11 @@ If the knowledge base does NOT have enough information to answer, respond with e
 }
 
 export async function enqueueClassifyTicket(id: string, subject: string, body: string) {
-  await boss.send("classify-ticket", { id, subject, body });
+  const b = getBoss();
+  await b.send("classify-ticket", { id, subject, body });
 }
 
 export async function enqueueAutoResolve(id: string, subject: string, body: string) {
-  await boss.send("auto-resolve", { id, subject, body });
+  const b = getBoss();
+  await b.send("auto-resolve", { id, subject, body });
 }
-
-export { boss };
