@@ -18,8 +18,8 @@ COPY server/ ./server/
 # Build the Vite/React client → output to client/dist
 RUN cd client && bun run build
 
-# Generate Prisma client
-RUN cd server && bunx prisma generate
+# Generate Prisma client (placeholder DATABASE_URL — not used at runtime)
+RUN cd server && DATABASE_URL="postgresql://p:p@localhost:5432/db" bunx prisma generate
 
 # Bundle the Express server → output to server/dist
 RUN cd server && bun run build
