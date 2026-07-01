@@ -22,6 +22,11 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
 import * as Sentry from "@sentry/node";
 
+// ─── Trust proxy (Railway / cloud reverse proxy) ──────────────────────────────
+// Railway sits behind a load-balancer that injects X-Forwarded-For. Without
+// this, express-rate-limit v8+ throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+app.set("trust proxy", 1);
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(
   cors({

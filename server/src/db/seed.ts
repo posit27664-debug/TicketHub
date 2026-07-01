@@ -1,5 +1,5 @@
 import { prisma } from "./client";
-import { Role } from "@prisma/client";
+import { Role } from "../generated/prisma/client";
 import { hashPassword } from "@better-auth/utils/password";
 
 async function seed() {

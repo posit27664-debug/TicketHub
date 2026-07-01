@@ -8,6 +8,10 @@ echo "Running Prisma db push..."
 cd /app/server && bunx prisma db push 2>&1
 echo "Prisma db push complete."
 
+echo "Generating Prisma client..."
+cd /app/server && bunx prisma generate 2>&1
+echo "Prisma generate complete."
+
 echo "Running seed..."
 cd /app/server && bun run src/db/seed.ts 2>&1
 SEED_EXIT=$?
