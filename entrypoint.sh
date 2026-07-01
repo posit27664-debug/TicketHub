@@ -10,7 +10,8 @@ echo "Prisma db push complete."
 
 echo "Running seed..."
 cd /app/server && bun run src/db/seed.ts 2>&1
-echo "Seed complete."
+SEED_EXIT=$?
+echo "Seed exit code: $SEED_EXIT"
 
 echo "Starting server..."
 cd /app/server && exec bun run src/index.ts
