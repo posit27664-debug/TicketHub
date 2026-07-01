@@ -41,7 +41,9 @@ COPY --from=builder /app/server/package.json  ./server/package.json
 
 WORKDIR /app/server
 
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 3001
 
-# Start the server (migrations run via preDeployCommand in railway.json)
-CMD ["sh", "-c", "bun dist/index.js"]
+CMD ["/app/entrypoint.sh"]
